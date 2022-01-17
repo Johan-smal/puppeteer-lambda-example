@@ -1,0 +1,1 @@
+export default abstract class ProcessError extends Error {}

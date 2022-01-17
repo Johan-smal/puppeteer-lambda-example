@@ -3,7 +3,7 @@ import express from "express";
 import { AWS_CREDENTIALS, IS_OFFLINE, STAGE } from "../config";
 import serverlessHttp = require("serverless-http");
 
-const cors = require("cors");
+import cors from "cors";
 const app: express.Application = express();
 
 app.use(
@@ -24,6 +24,10 @@ app.use(express.json());
 export const log = (message: any, props?: any) => {
   console.log(JSON.stringify({ message, props }, null, 2));
 };
+
+router.get('/', async (req, res) => {
+res.send('working');
+})
 
 router.get(
   "/status",
@@ -57,6 +61,31 @@ router.get(
     res.json({ message: "puppeteer invoked" });
   }
 );
+
+router.post('/:bank/start', async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const lambdaConfig = {
+    ...(IS_OFFLINE
+      ? { endpoint: "http://localhost:3002", credentials: AWS_CREDENTIALS }
+      : {
+          region: "eu-west-1",
+        }),
+  };
+
+  const lambda = new Lambda(lambdaConfig);
+
+  const params = {
+    FunctionName: "puppeteer-scraper-example-dev-puppeteer", // <service>-<stage>-<lambda name>
+    InvocationType: "Event", // Async
+    Payload: JSON.stringify({ bank: req.params?.bank, ...req.body }),
+  };
+
+  await lambda.invoke(params).promise();
+
+  res.json({
+    status: 'started'
+  });
+  next();
+})
 
 IS_OFFLINE ? app.use(`/`, router) : app.use(`/${STAGE}`, router);
 

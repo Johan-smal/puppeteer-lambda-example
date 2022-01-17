@@ -1,19 +1,33 @@
-import { Context, SQSRecord } from "aws-lambda";
+import { APIGatewayEvent, Context } from "aws-lambda";
 import chromium from "chrome-aws-lambda";
 import { Browser } from "puppeteer-core";
+import errorHandler from "../errors/handler";
+import BankCrawlerInterface from "../banks/BankCrawlerInterface";
+import NedbankCrawler from "../banks/NedbankCrawler";
+import AbsaCrawler from "../banks/AbsaCrawler";
 
-export const getPayload = (record: SQSRecord) => {
-  const message = record.messageAttributes["payload"].stringValue || "{}";
+const banks = {
+  nedbank: NedbankCrawler,
+  absa: AbsaCrawler
+} as const;
 
-  return JSON.parse(message);
-};
+enum Banks {
+  NEDBANK = "nedbank",
+  ABSA = 'absa'
+}
 
-const handler = async (event: any, context: Context): Promise<any> => {
+interface CrawlerLambdaEvent extends APIGatewayEvent {
+  bank: Banks;
+  username: string;
+  password: string
+}
+
+const handler = async (event: CrawlerLambdaEvent, context: Context): Promise<any> => {
   context.callbackWaitsForEmptyEventLoop = false;
 
   console.log({ event });
 
-  const { url, fileName } = event;
+  const { bank, username, password } = event;
 
   let browser: null | Browser = null;
 
@@ -30,26 +44,20 @@ const handler = async (event: any, context: Context): Promise<any> => {
       },
     });
 
-    // Create a new incognito browser context.
     const page = await browser.newPage();
 
-    await page.goto(url);
+    const crawler: BankCrawlerInterface = new banks[bank](page, username, password);
+    await crawler.start()
 
-    await page.screenshot({
-      type: "png",
-      path: `${fileName}.png`,
-    });
 
     console.log(`PUPPETEER SESSION COMPLETED`);
   } catch (error) {
-    console.log("PUPPETEER ", error);
-
+    errorHandler(error)
     return { body: JSON.stringify({ error }, null, 2), statusCode: 400 };
   } finally {
     if (browser !== null) {
       await browser.close();
     }
-
     return true;
   }
 };

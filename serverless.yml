@@ -72,6 +72,6 @@ functions:
   puppeteer:
     handler: src/handlers/puppeteer.handler
     memorySize: 2048
-    timeout: 300
+    timeout: 3000
     layers:
       - arn:aws:lambda:eu-west-1:743016643271:layer:chrome-layer:1 # create custom layer https://github.com/alixaxel/chrome-aws-lambda#aws-lambda-layer
