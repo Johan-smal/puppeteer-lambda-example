@@ -78,11 +78,6 @@ export default class NedbankCrawler extends BankCrawler implements BankCrawlerIn
     }
 
     public async downloadStatements(accountIndex = 0): Promise<void> {
-        const client = await this.page.target().createCDPSession();
-        await client.send("Page.setDownloadBehavior", {
-            behavior: "allow",
-            downloadPath: path.resolve(__dirname, "download")
-        });
         await this.page.waitForSelector('a[aria-label="Overview"]', { timeout: 10000});
         await this.page.click('a[aria-label="Overview"]');
         
